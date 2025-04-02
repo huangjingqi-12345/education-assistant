@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教育安全助手</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .app-container {
+            display: flex;
+            gap: 20px;
+        }
+        .chat-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+            flex: 2;
+        }
+        .rules-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 300px;
+        }
+        .chat-header, .rules-header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .rules-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #fff9e6;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+        }
+        .assistant-message {
+            background-color: #f1f1f1;
+            margin-right: auto;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+        }
+        .input-hint {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .scenario-tag {
+            display: inline-block;
+            background-color: #e1f5fe;
+            color: #0277bd;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        .message-content {
+            white-space: pre-wrap;
+        }
+        .rules-title {
+            font-weight: bold;
+            color: #d32f2f;
+            margin-bottom: 10px;
+        }
+        .rules-list {
+            white-space: pre-wrap;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        .no-rules {
+            color: #666;
+            text-align: center;
+            margin-top: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>教育安全助手</h1>
+                <p>我会先了解您的使用场景，再回答具体问题</p>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <!-- 消息将在这里动态添加 -->
+            </div>
+            
+            <div class="loading" id="loading">
+                正在思考...
+            </div>
+            
+            <div class="input-area">
+                <div style="flex-grow: 1;">
+                    <input type="text" id="user-input" placeholder="请输入使用场景...">
+                    <div class="input-hint" id="input-hint">请描述您的使用场景</div>
+                </div>
+                <button id="send-button">发送</button>
+            </div>
+        </div>
+        
+        <div class="rules-container">
+            <div class="rules-header">
+                <h2>安全规则</h2>
+                <p>当前场景的安全指南</p>
+            </div>
+            <div class="rules-content" id="rules-content">
+                <div class="no-rules">请先确认使用场景</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const loadingIndicator = document.getElementById('loading');
+            const inputHint = document.getElementById('input-hint');
+            const rulesContent = document.getElementById('rules-content');
+            
+            // 生成唯一用户ID
+            const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            
+            // 当前场景状态
+            let currentScenario = null;
+            let currentRules = null;
+            
+            // 添加消息到聊天界面
+            function addMessage(role, content, scenario = null) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(role + '-message');
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.classList.add('message-content');
+                contentDiv.textContent = content;
+                messageDiv.appendChild(contentDiv);
+                
+                if (scenario) {
+                    const scenarioTag = document.createElement('span');
+                    scenarioTag.classList.add('scenario-tag');
+                    scenarioTag.textContent = scenario;
+                    messageDiv.appendChild(scenarioTag);
+                    currentScenario = scenario;
+                } else if (currentScenario && role === 'assistant') {
+                    const scenarioTag = document.createElement('span');
+                    scenarioTag.classList.add('scenario-tag');
+                    scenarioTag.textContent = currentScenario;
+                    messageDiv.appendChild(scenarioTag);
+                }
+                
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // 更新安全规则显示
+			function updateRulesDisplay(rules, scenario) {
+				if (!rules) {
+					rulesContent.innerHTML = '<div class="no-rules">请先确认使用场景</div>';
+					return;
+				}
+				
+				let html = '<div class="rules-title">安全规则</div>';
+				html += `<div class="rules-list">${rules}</div>`;
+				rulesContent.innerHTML = html;
+				currentRules = rules;
+			}
+            
+            // 更新输入提示
+            function updateInputHint(text) {
+                inputHint.textContent = text;
+                userInput.placeholder = text.includes('场景') ? '请输入使用场景...' : 
+                                      text.includes('确认') ? '回答"是"或"否"...' : 
+                                      '请输入您的问题...';
+            }
+            
+            // 初始化对话
+            function initConversation() {
+                addMessage('assistant', '欢迎使用教育安全助手！为了更好地回答您的问题，请先告诉我您所处的使用场景是什么？\n（例如：学校教育、家庭教育、在线学习、实验室实验、您的年级等）');
+                updateInputHint('请描述您的使用场景');
+            }
+            
+            // 发送消息到后端
+            async function sendMessage() {
+                const message = userInput.value.trim();
+                if (!message) return;
+                
+                // 显示用户消息
+                addMessage('user', message);
+                userInput.value = '';
+                
+                // 显示加载指示器
+                loadingIndicator.style.display = 'block';
+                sendButton.disabled = true;
+                
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            message: message
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        addMessage('assistant', data.error);
+                    } else {
+                        // 检查是否有重置标志
+                        if (data.reset) {
+                            updateRulesDisplay(null, null);
+                        }
+                        
+                        // 更新安全规则显示
+                        if (data.rules) {
+                            updateRulesDisplay(data.rules, data.scenario || currentScenario);
+                        }
+                        
+                        // 显示AI回复
+                        if (data.response) {
+                            addMessage('assistant', data.response, data.scenario || currentScenario);
+                        }
+                        
+                        // 更新输入提示
+                        if (data.response.includes('确认这是否正确')) {
+                            updateInputHint('请确认场景(回答"是"或"否")');
+                        } else if (data.next_step) {
+                            updateInputHint(data.next_step);
+                        } else if (data.response.includes('更改场景')) {
+                            updateInputHint('输入"更改场景"来更换使用场景');
+                        } else {
+                            updateInputHint('请输入您的问题(或"更改场景")');
+                        }
+                    }
+                } catch (error) {
+                    addMessage('assistant', '网络错误，请重试。');
+                } finally {
+                    loadingIndicator.style.display = 'none';
+                    sendButton.disabled = false;
+                    userInput.focus();
+                }
+            }
+            
+            // 发送按钮点击事件
+            sendButton.addEventListener('click', sendMessage);
+            
+            // 输入框回车事件
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // 初始化对话
+            initConversation();
+        });
+    </script>
+</body>
+</html>
